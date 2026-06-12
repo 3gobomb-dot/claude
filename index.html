@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI 제안서 생성기</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2e3250;
+      --accent: #6c63ff;
+      --accent-hover: #8b85ff;
+      --text: #e8eaf6;
+      --text-muted: #8b90b0;
+      --success: #43d68a;
+      --error: #ff5f7e;
+      --radius: 12px;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      padding: 20px 32px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    header .logo {
+      width: 32px;
+      height: 32px;
+      background: var(--accent);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    header h1 {
+      font-size: 1.2rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+
+    .badge {
+      margin-left: auto;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      background: var(--surface2);
+      padding: 4px 10px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+    }
+
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: auto 1fr;
+      gap: 0;
+      height: calc(100vh - 73px);
+    }
+
+    .settings-bar {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 32px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .settings-bar label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .settings-bar input {
+      flex: 1;
+      max-width: 380px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 14px;
+      color: var(--text);
+      font-size: 0.85rem;
+      font-family: monospace;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .settings-bar input:focus { border-color: var(--accent); }
+
+    .settings-bar .hint {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .panel {
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    .panel:last-child { border-right: none; }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 20px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .panel-header .step {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--accent);
+      font-size: 0.7rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .panel-header h2 {
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .panel-header p {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-left: auto;
+    }
+
+    .panel-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 16px 20px;
+      gap: 12px;
+      overflow-y: auto;
+    }
+
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .field-group label {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    textarea {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      color: var(--text);
+      font-size: 0.85rem;
+      line-height: 1.6;
+      resize: none;
+      outline: none;
+      font-family: inherit;
+      transition: border-color 0.2s;
+    }
+
+    textarea:focus { border-color: var(--accent); }
+
+    .textarea-template { flex: 1; min-height: 200px; }
+    .textarea-request { height: 100px; }
+    .textarea-output {
+      flex: 1;
+      min-height: 300px;
+      font-size: 0.83rem;
+      line-height: 1.7;
+    }
+
+    .file-upload-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      background: var(--surface2);
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      transition: all 0.2s;
+      user-select: none;
+    }
+
+    .file-upload-btn:hover {
+      border-color: var(--accent);
+      color: var(--text);
+      background: var(--surface);
+    }
+
+    #file-input { display: none; }
+
+    .action-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    button.primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 22px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    button.primary:hover:not(:disabled) { background: var(--accent-hover); }
+    button.primary:active:not(:disabled) { transform: scale(0.98); }
+    button.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    button.secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 16px;
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.83rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    button.secondary:hover { border-color: var(--text-muted); color: var(--text); }
+
+    .status {
+      font-size: 0.78rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .status.loading { color: var(--accent); }
+    .status.success { color: var(--success); }
+    .status.error { color: var(--error); }
+
+    .spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: inline-block;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .char-count {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      text-align: right;
+    }
+
+    .output-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .tip {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      line-height: 1.5;
+    }
+
+    .tip strong { color: var(--text); }
+
+    @media (max-width: 768px) {
+      main {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto;
+        height: auto;
+      }
+      .panel { border-right: none; border-bottom: 1px solid var(--border); }
+      .settings-bar { flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">✦</div>
+  <h1>AI 제안서 생성기</h1>
+  <span class="badge">Powered by Gemini</span>
+</header>
+
+<main>
+  <!-- Settings Bar -->
+  <div class="settings-bar">
+    <label for="api-key">Gemini API Key</label>
+    <input type="password" id="api-key" placeholder="AIza..." autocomplete="off" />
+    <span class="hint">키는 브라우저에만 저장됩니다 · 서버로 전송되지 않습니다</span>
+    <label style="margin-left:12px;" for="save-key">
+      <input type="checkbox" id="save-key" />
+      기억하기
+    </label>
+  </div>
+
+  <!-- Left Panel: Template + Request -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="step">1</div>
+      <h2>양식 &amp; 요청사항 입력</h2>
+    </div>
+    <div class="panel-body">
+
+      <div class="field-group">
+        <label>제안서 양식 (참고 템플릿)</label>
+        <label class="file-upload-btn" for="file-input">
+          📎 파일에서 불러오기 (.txt)
+        </label>
+        <input type="file" id="file-input" accept=".txt,.md" />
+        <textarea
+          id="template"
+          class="textarea-template"
+          placeholder="여기에 기존 제안서 양식을 붙여넣으세요.
+
+예)
+[제안서]
+제목: ___
+1. 제안 배경
+2. 목표
+3. 추진 방안
+4. 기대 효과
+5. 예산 및 일정"
+        ></textarea>
+        <div class="char-count" id="template-count">0자</div>
+      </div>
+
+      <div class="field-group">
+        <label>새 제안서 요청사항</label>
+        <textarea
+          id="request"
+          class="textarea-request"
+          placeholder="어떤 내용의 제안서를 만들고 싶은지 설명해주세요.
+예) '신입 직원 온보딩 프로그램 도입'을 위한 제안서, 대상은 HR팀"
+        ></textarea>
+      </div>
+
+      <div class="tip">
+        <strong>사용 방법:</strong> 위에 기존 제안서 양식을 붙여넣고,
+        아래에 새로 만들 제안서의 주제/목적을 입력한 뒤 생성 버튼을 누르세요.
+      </div>
+
+      <div class="action-row">
+        <button class="primary" id="generate-btn" onclick="generate()">
+          ✦ 제안서 생성
+        </button>
+        <button class="secondary" onclick="clearAll()">초기화</button>
+        <span class="status" id="status"></span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Right Panel: Output -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="step">2</div>
+      <h2>생성된 제안서</h2>
+      <p id="token-info"></p>
+    </div>
+    <div class="panel-body">
+
+      <div class="output-actions">
+        <button class="secondary" onclick="copyOutput()">📋 복사</button>
+        <button class="secondary" onclick="downloadOutput()">⬇ 다운로드</button>
+        <button class="secondary" onclick="clearOutput()">🗑 지우기</button>
+      </div>
+
+      <textarea
+        id="output"
+        class="textarea-output"
+        placeholder="생성된 제안서가 여기에 표시됩니다."
+        readonly
+      ></textarea>
+
+    </div>
+  </div>
+</main>
+
+<script>
+  const MODEL = 'gemini-2.5-flash-preview-05-20';
+
+  // Restore saved key
+  const savedKey = localStorage.getItem('gemini_api_key');
+  if (savedKey) {
+    document.getElementById('api-key').value = savedKey;
+    document.getElementById('save-key').checked = true;
+  }
+
+  document.getElementById('save-key').addEventListener('change', e => {
+    if (!e.target.checked) localStorage.removeItem('gemini_api_key');
+  });
+
+  // File upload
+  document.getElementById('file-input').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      document.getElementById('template').value = ev.target.result;
+      updateCount();
+    };
+    reader.readAsText(file, 'utf-8');
+  });
+
+  // Char count
+  document.getElementById('template').addEventListener('input', updateCount);
+  function updateCount() {
+    const len = document.getElementById('template').value.length;
+    document.getElementById('template-count').textContent = `${len.toLocaleString()}자`;
+  }
+
+  function setStatus(type, msg) {
+    const el = document.getElementById('status');
+    el.className = 'status ' + type;
+    if (type === 'loading') {
+      el.innerHTML = `<span class="spinner"></span> ${msg}`;
+    } else {
+      el.textContent = msg;
+    }
+  }
+
+  async function generate() {
+    const apiKey = document.getElementById('api-key').value.trim();
+    const template = document.getElementById('template').value.trim();
+    const request = document.getElementById('request').value.trim();
+
+    if (!apiKey) { setStatus('error', 'API Key를 입력해주세요.'); return; }
+    if (!template) { setStatus('error', '제안서 양식을 입력해주세요.'); return; }
+    if (!request) { setStatus('error', '요청사항을 입력해주세요.'); return; }
+
+    if (document.getElementById('save-key').checked) {
+      localStorage.setItem('gemini_api_key', apiKey);
+    }
+
+    const btn = document.getElementById('generate-btn');
+    btn.disabled = true;
+    setStatus('loading', '생성 중...');
+    document.getElementById('output').value = '';
+    document.getElementById('token-info').textContent = '';
+
+    const prompt = `당신은 전문 제안서 작성 전문가입니다.
+
+아래 [참고 양식]을 분석하여 구조, 형식, 문체, 섹션 구성을 파악한 뒤,
+[요청사항]에 맞는 새로운 제안서를 작성해주세요.
+
+규칙:
+- 참고 양식과 동일한 구조와 형식을 유지하세요.
+- 내용은 요청사항에 맞게 구체적이고 설득력 있게 작성하세요.
+- 빈칸(___)이 있다면 적절한 내용으로 채워주세요.
+- 한국어로 작성하세요.
+
+[참고 양식]
+${template}
+
+[요청사항]
+${request}
+
+[새 제안서]`;
+
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 8192,
+          }
+        })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        const errMsg = data?.error?.message || `HTTP ${res.status}`;
+        throw new Error(errMsg);
+      }
+
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!text) throw new Error('응답에서 텍스트를 찾을 수 없습니다.');
+
+      document.getElementById('output').value = text;
+
+      const usage = data?.usageMetadata;
+      if (usage) {
+        document.getElementById('token-info').textContent =
+          `입력 ${usage.promptTokenCount?.toLocaleString() ?? '?'}  출력 ${usage.candidatesTokenCount?.toLocaleString() ?? '?'} 토큰`;
+      }
+
+      setStatus('success', '생성 완료!');
+    } catch (err) {
+      setStatus('error', err.message);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function copyOutput() {
+    const text = document.getElementById('output').value;
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => setStatus('success', '클립보드에 복사됨'));
+  }
+
+  function downloadOutput() {
+    const text = document.getElementById('output').value;
+    if (!text) return;
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `제안서_${new Date().toISOString().slice(0,10)}.txt`;
+    a.click();
+  }
+
+  function clearOutput() {
+    document.getElementById('output').value = '';
+    document.getElementById('token-info').textContent = '';
+  }
+
+  function clearAll() {
+    document.getElementById('template').value = '';
+    document.getElementById('request').value = '';
+    document.getElementById('output').value = '';
+    document.getElementById('token-info').textContent = '';
+    document.getElementById('status').textContent = '';
+    updateCount();
+  }
+
+  // Enter key in request textarea
+  document.getElementById('request').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) generate();
+  });
+</script>
+</body>
+</html>
